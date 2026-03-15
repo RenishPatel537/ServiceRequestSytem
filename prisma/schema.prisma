@@ -1,0 +1,232 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  userid                       Int                            @id @default(autoincrement())
+  username                     String                         @unique @db.VarChar(100)
+  passwordhash                 String
+  isactive                     Boolean?                       @default(true)
+  lastlogin                    DateTime?                      @db.Timestamp(6)
+  createdat                    DateTime?                      @default(now()) @db.Timestamp(6)
+  email                        String                         @unique(map: "user_email_unique") @db.VarChar(100)
+  servicedept                  servicedept[]
+  servicedeptperson            servicedeptperson[]
+  resolvedRequests             servicerequest[]               @relation("resolvedRequests")
+  servicerequest               servicerequest[]
+  servicerequestattachment     servicerequestattachment[]
+  servicerequestfeedback       servicerequestfeedback[]
+  servicerequestreply          servicerequestreply[]
+  servicerequeststatus         servicerequeststatus[]
+  servicerequesttype           servicerequesttype[]
+  servicerequesttypewiseperson servicerequesttypewiseperson[]
+  servicetype                  servicetype[]
+  userrole                     userrole[]
+  userstaff                    userstaff[]
+}
+
+model role {
+  roleid      Int        @id @default(autoincrement())
+  rolename    String     @unique @db.VarChar(50)
+  description String?    @db.VarChar(250)
+  userrole    userrole[]
+}
+
+model servicedept {
+  servicedeptid      Int                  @id @default(autoincrement())
+  servicedeptname    String               @db.VarChar(250)
+  description        String?              @db.VarChar(250)
+  createdbyuserid    Int
+  createdat          DateTime?            @default(now()) @db.Timestamp(6)
+  modifiedat         DateTime?            @default(now()) @db.Timestamp(6)
+  User               User                 @relation(fields: [createdbyuserid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_servicedept_user")
+  servicedeptperson  servicedeptperson[]
+  servicerequesttype servicerequesttype[]
+}
+
+model servicedeptperson {
+  servicedeptpersonid Int         @id @default(autoincrement())
+  servicedeptid       Int
+  staffid             Int
+  fromdate            DateTime    @db.Timestamp(6)
+  todate              DateTime?   @db.Timestamp(6)
+  description         String?     @db.VarChar(250)
+  createdbyuserid     Int
+  createdat           DateTime?   @default(now()) @db.Timestamp(6)
+  modifiedat          DateTime?   @default(now()) @db.Timestamp(6)
+  servicedept         servicedept @relation(fields: [servicedeptid], references: [servicedeptid], onDelete: NoAction, onUpdate: NoAction, map: "fk_deptperson_dept")
+  staff               staff       @relation(fields: [staffid], references: [staffid], onDelete: NoAction, onUpdate: NoAction, map: "fk_deptperson_staff")
+  User                User        @relation(fields: [createdbyuserid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_deptperson_user")
+}
+
+model servicerequest {
+  servicerequestid          Int                        @id @default(autoincrement())
+  servicerequestno          String                     @unique @db.VarChar(100)
+  servicerequestdatetime    DateTime?                  @default(now()) @db.Timestamp(6)
+  requesterstaffid          Int?
+  servicerequesttypeid      Int
+  servicerequesttitle       String                     @db.VarChar(250)
+  servicerequestdescription String
+  servicerequeststatusid    Int
+  assignedtostaffid         Int?
+  assignedbyuserid          Int?
+  assigneddatetime          DateTime?                  @db.Timestamp(6)
+  prioritylevel             String?                    @db.VarChar(50)
+  approvalstatus            String?                    @db.VarChar(50)
+  createdbyuserid           Int
+  createdat                 DateTime?                  @default(now()) @db.Timestamp(6)
+  modifiedat                DateTime?                  @default(now()) @db.Timestamp(6)
+  rejectionreason           String?
+  resolutionnote            String?
+  resolvedat                DateTime?                  @db.Timestamp(6)
+  resolvedbyuserid          Int?
+  assignedStaff             staff?                     @relation("assignedRequests", fields: [assignedtostaffid], references: [staffid], onDelete: NoAction, onUpdate: NoAction, map: "fk_sr_assigned_staff")
+  requesterStaff            staff?                     @relation("requestedRequests", fields: [requesterstaffid], references: [staffid], onDelete: NoAction, onUpdate: NoAction, map: "fk_sr_requester_staff")
+  resolvedUser              User?                      @relation("resolvedRequests", fields: [resolvedbyuserid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_sr_resolved_user")
+  servicerequeststatus      servicerequeststatus       @relation(fields: [servicerequeststatusid], references: [servicerequeststatusid], onDelete: NoAction, onUpdate: NoAction, map: "fk_sr_status")
+  servicerequesttype        servicerequesttype         @relation(fields: [servicerequesttypeid], references: [servicerequesttypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_sr_type")
+  User                      User                       @relation(fields: [createdbyuserid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_sr_user")
+  servicerequestattachment  servicerequestattachment[]
+  servicerequestfeedback    servicerequestfeedback[]
+  servicerequestreply       servicerequestreply[]
+
+  @@index([assignedtostaffid], map: "idx_sr_assigned")
+  @@index([servicerequeststatusid], map: "idx_sr_status")
+}
+
+model servicerequestattachment {
+  attachmentid     Int            @id @default(autoincrement())
+  servicerequestid Int
+  filepath         String
+  originalfilename String?        @db.VarChar(250)
+  uploadedbyuserid Int
+  uploadedat       DateTime?      @default(now()) @db.Timestamp(6)
+  servicerequest   servicerequest @relation(fields: [servicerequestid], references: [servicerequestid], onDelete: NoAction, onUpdate: NoAction, map: "fk_attachment_request")
+  User             User           @relation(fields: [uploadedbyuserid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_attachment_user")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model servicerequestfeedback {
+  feedbackid       Int            @id @default(autoincrement())
+  servicerequestid Int
+  rating           Int?
+  comments         String?        @db.VarChar(500)
+  givenbyuserid    Int
+  givenat          DateTime?      @default(now()) @db.Timestamp(6)
+  servicerequest   servicerequest @relation(fields: [servicerequestid], references: [servicerequestid], onDelete: NoAction, onUpdate: NoAction, map: "fk_feedback_request")
+  User             User           @relation(fields: [givenbyuserid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_feedback_user")
+}
+
+model servicerequestreply {
+  servicerequestreplyid  Int                  @id @default(autoincrement())
+  servicerequestid       Int
+  repliedbystaffid       Int?
+  replydescription       String
+  servicerequeststatusid Int
+  repliedbyuserid        Int
+  createdat              DateTime?            @default(now()) @db.Timestamp(6)
+  servicerequest         servicerequest       @relation(fields: [servicerequestid], references: [servicerequestid], onDelete: NoAction, onUpdate: NoAction, map: "fk_srr_request")
+  staff                  staff?               @relation(fields: [repliedbystaffid], references: [staffid], onDelete: NoAction, onUpdate: NoAction, map: "fk_srr_staff")
+  servicerequeststatus   servicerequeststatus @relation(fields: [servicerequeststatusid], references: [servicerequeststatusid], onDelete: NoAction, onUpdate: NoAction, map: "fk_srr_status")
+  User                   User                 @relation(fields: [repliedbyuserid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_srr_user")
+
+  @@index([servicerequestid], map: "idx_srr_request")
+}
+
+model servicerequeststatus {
+  servicerequeststatusid   Int                   @id @default(autoincrement())
+  servicerequeststatusname String                @db.VarChar(250)
+  createdbyuserid          Int
+  createdat                DateTime?             @default(now()) @db.Timestamp(6)
+  modifiedat               DateTime?             @default(now()) @db.Timestamp(6)
+  isactive                 Boolean?              @default(true)
+  servicerequest           servicerequest[]
+  servicerequestreply      servicerequestreply[]
+  User                     User                  @relation(fields: [createdbyuserid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_status_user")
+}
+
+model servicerequesttype {
+  servicerequesttypeid         Int                            @id @default(autoincrement())
+  servicetypeid                Int
+  servicedeptid                Int
+  servicerequesttypename       String                         @db.VarChar(250)
+  description                  String?                        @db.VarChar(250)
+  defaultprioritylevel         String?                        @db.VarChar(50)
+  reminderdaysafterassignment  Int?
+  ismandatoryresource          Boolean?                       @default(false)
+  isvisibleresource            Boolean?                       @default(true)
+  createdbyuserid              Int
+  createdat                    DateTime?                      @default(now()) @db.Timestamp(6)
+  modifiedat                   DateTime?                      @default(now()) @db.Timestamp(6)
+  servicerequest               servicerequest[]
+  servicedept                  servicedept                    @relation(fields: [servicedeptid], references: [servicedeptid], onDelete: NoAction, onUpdate: NoAction, map: "fk_srt_dept")
+  servicetype                  servicetype                    @relation(fields: [servicetypeid], references: [servicetypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_srt_servicetype")
+  User                         User                           @relation(fields: [createdbyuserid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_srt_user")
+  servicerequesttypewiseperson servicerequesttypewiseperson[]
+}
+
+model servicerequesttypewiseperson {
+  servicerequesttypewisepersonid Int                @id @default(autoincrement())
+  servicerequesttypeid           Int
+  staffid                        Int
+  fromdate                       DateTime           @db.Timestamp(6)
+  todate                         DateTime?          @db.Timestamp(6)
+  description                    String?            @db.VarChar(250)
+  createdbyuserid                Int
+  createdat                      DateTime?          @default(now()) @db.Timestamp(6)
+  modifiedat                     DateTime?          @default(now()) @db.Timestamp(6)
+  staff                          staff              @relation(fields: [staffid], references: [staffid], onDelete: NoAction, onUpdate: NoAction, map: "fk_srtwp_staff")
+  servicerequesttype             servicerequesttype @relation(fields: [servicerequesttypeid], references: [servicerequesttypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_srtwp_type")
+  User                           User               @relation(fields: [createdbyuserid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_srtwp_user")
+}
+
+model servicetype {
+  servicetypeid      Int                  @id @default(autoincrement())
+  servicetypename    String               @db.VarChar(250)
+  isforstaff         Boolean?             @default(true)
+  isforstudent       Boolean?             @default(false)
+  createdbyuserid    Int
+  createdat          DateTime?            @default(now()) @db.Timestamp(6)
+  modifiedat         DateTime?            @default(now()) @db.Timestamp(6)
+  servicerequesttype servicerequesttype[]
+  User               User                 @relation(fields: [createdbyuserid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_servicetype_user")
+}
+
+model staff {
+  staffid                      Int                            @id @default(autoincrement())
+  staffcode                    String                         @unique @db.VarChar(50)
+  fullname                     String                         @db.VarChar(150)
+  email                        String?                        @db.VarChar(150)
+  mobile                       String?                        @db.VarChar(20)
+  isactive                     Boolean?                       @default(true)
+  createdat                    DateTime?                      @default(now()) @db.Timestamp(6)
+  servicedeptperson            servicedeptperson[]
+  assignedRequests             servicerequest[]               @relation("assignedRequests")
+  requestedRequests            servicerequest[]               @relation("requestedRequests")
+  servicerequestreply          servicerequestreply[]
+  servicerequesttypewiseperson servicerequesttypewiseperson[]
+  userstaff                    userstaff[]
+}
+
+model userrole {
+  userroleid Int       @id @default(autoincrement())
+  userid     Int
+  roleid     Int
+  fromdate   DateTime? @default(now()) @db.Timestamp(6)
+  todate     DateTime? @db.Timestamp(6)
+  role       role      @relation(fields: [roleid], references: [roleid], onDelete: NoAction, onUpdate: NoAction, map: "fk_userrole_role")
+  User       User      @relation(fields: [userid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_userrole_user")
+}
+
+model userstaff {
+  userstaffid Int   @id @default(autoincrement())
+  userid      Int
+  staffid     Int
+  staff       staff @relation(fields: [staffid], references: [staffid], onDelete: NoAction, onUpdate: NoAction, map: "fk_userstaff_staff")
+  User        User  @relation(fields: [userid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_userstaff_user")
+}
