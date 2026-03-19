@@ -26,7 +26,7 @@ export default function HodLayout({ children }: { children: React.ReactNode }) {
     { name: "Resolved", path: "/hod/requests/resolved" },
     { name: "Rejected", path: "/hod/requests/rejected" },
     { name: "Closed", path: "/hod/requests/closed" },
-    { name: "Team", path: "/hod/team" },
+    // { name: "Team", path: "/hod/team" },
   ];
 
   return (
